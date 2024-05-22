@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:vicharpt/constants/app_color.dart';
-import 'package:vicharpt/model/music_model.dart';
+import 'package:vicharpt/model/music_service.dart';
 import 'package:vicharpt/screen/player_list_screen.dart';
 import 'package:vicharpt/widgets/button_image_or_icon.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class PLayerScreen extends StatefulWidget {
   const PLayerScreen({super.key});
@@ -19,6 +20,16 @@ class _PLayerScreenState extends State<PLayerScreen> {
     final min = time ~/ 60;
     final sec = time % 60;
     return "$min:${sec.toStringAsFixed(0).padRight(2, "0")}";
+  }
+
+  @override
+  void initState() {
+    requestPermission();
+    super.initState();
+  }
+
+  Future<void> requestPermission() async {
+    await Permission.storage.request();
   }
 
   @override

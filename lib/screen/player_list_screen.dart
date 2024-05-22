@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:on_audio_query/on_audio_query.dart';
 import 'package:vicharpt/constants/app_color.dart';
-import 'package:vicharpt/model/music_model.dart';
+import 'package:vicharpt/model/music_service.dart';
 import 'package:vicharpt/widgets/button_image_or_icon.dart';
 
 class playerListScreen extends StatefulWidget {
@@ -13,18 +14,33 @@ class playerListScreen extends StatefulWidget {
 
 class _playerListScreenState extends State<playerListScreen> {
   late int selectedIndex;
+  late String imageUrl;
+
   ScrollController scrollController = ScrollController();
+
+  final MusicService _musicService = MusicService();
+  List<SongModel> _songs = [];
+
   @override
   void initState() {
     selectedIndex = widget.selectedIndex;
     WidgetsBinding.instance.addPersistentFrameCallback((timeStamp) {
       calculateScrollPossition(scrollController);
     });
+
+    _loadSongs();
     super.initState();
   }
 
+  void _loadSongs() async {
+    final songs = await _musicService.getSongs();
+    setState(() {
+      _songs = songs;
+    });
+  }
+
   calculateScrollPossition(ScrollController scrollController) {
-    int totalLength = musicList.length;
+    int totalLength = 20; // sementara
     final macScrool = scrollController.position.maxScrollExtent;
 
     scrollController.animateTo(macScrool / totalLength * selectedIndex,
@@ -68,88 +84,93 @@ class _playerListScreenState extends State<playerListScreen> {
                     size: size.width * 0.45,
                     distance: 20,
                     padding: 8,
-                    imageUrl: musicList[selectedIndex].imageUrl,
+                    imageUrl: imageUrl,
                   ),
-                  ButtonImageOrIcon(
-                    size: 60,
-                    child: Icon(
-                      musicList[selectedIndex].isFav
-                          ? Icons.favorite
-                          : Icons.favorite_border,
-                      color: AppColor.secondaryTextColor,
-                    ),
-                  ),
+                  // ButtonImageOrIcon(
+                  //   size: 60,
+                  //   child: Icon(
+                  //     musicList[selectedIndex].isFav
+                  //         ? Icons.favorite
+                  //         : Icons.favorite_border,
+                  //     color: AppColor.secondaryTextColor,
+                  //   ),
+                  // ),
                 ],
               ),
             ),
             Expanded(
-                child: ListView.builder(
-              controller: scrollController,
-              itemCount: musicList.length,
-              itemBuilder: (context, index) {
-                return InkWell(
-                  onTap: () {
-                    setState(() {
-                      selectedIndex = index;
-                    });
-                  },
-                  child: Container(
-                    margin: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                    decoration: selectedIndex == index
-                        ? BoxDecoration(
-                            borderRadius: BorderRadius.circular(15),
-                            color: AppColor.secondaryTextColor.withOpacity(0.3))
-                        : null,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              musicList[index].name,
-                              style: TextStyle(
-                                color: AppColor.primaryTextColor,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
+              child: _songs.isEmpty ? Center(child: CircularProgressIndicator()) : ListView.builder(
+                      controller: scrollController,
+                      itemCount: _songs.length,
+                      itemBuilder: (context, index) {
+                        final song = _songs[index];
+                        return InkWell(
+                          onTap: () {
+                            setState(() {
+                              selectedIndex = index;
+                            });
+                          },
+                          child: Container(
+                            margin: EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 5),
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 15),
+                            decoration: selectedIndex == index
+                                ? BoxDecoration(
+                                    borderRadius: BorderRadius.circular(15),
+                                    color: AppColor.secondaryTextColor
+                                        .withOpacity(0.3))
+                                : null,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      song.title,
+                                      style: TextStyle(
+                                        color: AppColor.primaryTextColor,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    Text(
+                                      song.artist.toString(),
+                                      style: TextStyle(
+                                        color: AppColor.secondaryTextColor,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    )
+                                  ],
+                                ),
+                                selectedIndex == index
+                                    ? ButtonImageOrIcon(
+                                        size: 50,
+                                        colors: [
+                                          AppColor.blueTopDark,
+                                          AppColor.blue,
+                                        ],
+                                        child: Icon(
+                                          Icons.pause_rounded,
+                                          color: AppColor.white,
+                                        ),
+                                      )
+                                    : ButtonImageOrIcon(
+                                        size: 50,
+                                        child: Icon(
+                                          Icons.play_arrow_rounded,
+                                          color: AppColor.secondaryTextColor,
+                                        ),
+                                      )
+                              ],
                             ),
-                            Text(
-                              musicList[index].artist,
-                              style: TextStyle(
-                                color: AppColor.secondaryTextColor,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            )
-                          ],
-                        ),
-                        selectedIndex == index
-                            ? ButtonImageOrIcon(
-                                size: 50,
-                                colors: [
-                                  AppColor.blueTopDark,
-                                  AppColor.blue,
-                                ],
-                                child: Icon(
-                                  Icons.pause_rounded,
-                                  color: AppColor.white,
-                                ),
-                              )
-                            : ButtonImageOrIcon(
-                                size: 50,
-                                child: Icon(
-                                  Icons.play_arrow_rounded,
-                                  color: AppColor.secondaryTextColor,
-                                ),
-                              )
-                      ],
-                    ),
-                  ),
-                );
+                          ),
+                                    );
               },
-            ))
+                    );
+            )
           ],
         ),
       ),

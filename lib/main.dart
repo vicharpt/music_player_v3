@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:vicharpt/screen/player_list_screen.dart';
 import 'package:vicharpt/screen/player_screen.dart';
 
 void main() {
@@ -17,7 +16,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: const playerListScreen(),
+      home: const PLayerScreen(),
     );
   }
 }

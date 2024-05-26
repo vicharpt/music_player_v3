@@ -4,32 +4,31 @@ import 'package:vicharpt/constants/app_color.dart';
 import 'package:vicharpt/model/music_service.dart';
 import 'package:vicharpt/widgets/button_image_or_icon.dart';
 
-class playerListScreen extends StatefulWidget {
-  const playerListScreen({super.key, required this.selectedIndex});
+class PlayerListScreen extends StatefulWidget {
+  const PlayerListScreen({super.key, required this.selectedIndex});
   final int selectedIndex;
 
   @override
-  State<playerListScreen> createState() => _playerListScreenState();
+  State<PlayerListScreen> createState() => _PlayerListScreenState();
 }
 
-class _playerListScreenState extends State<playerListScreen> {
+class _PlayerListScreenState extends State<PlayerListScreen> {
   late int selectedIndex;
-  late String imageUrl;
 
   ScrollController scrollController = ScrollController();
-
   final MusicService _musicService = MusicService();
   List<SongModel> _songs = [];
 
   @override
   void initState() {
+    super.initState();
     selectedIndex = widget.selectedIndex;
-    WidgetsBinding.instance.addPersistentFrameCallback((timeStamp) {
-      calculateScrollPossition(scrollController);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      calculateScrollPosition(scrollController);
     });
 
     _loadSongs();
-    super.initState();
   }
 
   void _loadSongs() async {
@@ -39,12 +38,15 @@ class _playerListScreenState extends State<playerListScreen> {
     });
   }
 
-  calculateScrollPossition(ScrollController scrollController) {
-    int totalLength = 20; // sementara
-    final macScrool = scrollController.position.maxScrollExtent;
+  void calculateScrollPosition(ScrollController scrollController) {
+    int totalLength = _songs.length; // Use actual length
+    if (totalLength > 0) {
+      final maxScroll = scrollController.position.maxScrollExtent;
+      final scrollToPosition = maxScroll / totalLength * selectedIndex;
 
-    scrollController.animateTo(macScrool / totalLength * selectedIndex,
-        duration: Duration(milliseconds: 10), curve: Curves.easeIn);
+      scrollController.animateTo(scrollToPosition,
+          duration: Duration(milliseconds: 500), curve: Curves.easeIn);
+    }
   }
 
   @override
@@ -57,7 +59,7 @@ class _playerListScreenState extends State<playerListScreen> {
           children: [
             SizedBox(height: 20),
             Text(
-              "FLUME - KAI",
+              "VICHARPT",
               style: TextStyle(
                 color: AppColor.secondaryTextColor,
                 fontSize: 14,
@@ -84,22 +86,19 @@ class _playerListScreenState extends State<playerListScreen> {
                     size: size.width * 0.45,
                     distance: 20,
                     padding: 8,
-                    imageUrl: imageUrl,
+                    child: Icon(
+                      Icons.music_note,
+                      color: AppColor.secondaryTextColor,
+                      size: 85,
+                    ),
                   ),
-                  // ButtonImageOrIcon(
-                  //   size: 60,
-                  //   child: Icon(
-                  //     musicList[selectedIndex].isFav
-                  //         ? Icons.favorite
-                  //         : Icons.favorite_border,
-                  //     color: AppColor.secondaryTextColor,
-                  //   ),
-                  // ),
                 ],
               ),
             ),
             Expanded(
-              child: _songs.isEmpty ? Center(child: CircularProgressIndicator()) : ListView.builder(
+              child: _songs.isEmpty
+                  ? Center(child: CircularProgressIndicator())
+                  : ListView.builder(
                       controller: scrollController,
                       itemCount: _songs.length,
                       itemBuilder: (context, index) {
@@ -119,7 +118,8 @@ class _playerListScreenState extends State<playerListScreen> {
                                 ? BoxDecoration(
                                     borderRadius: BorderRadius.circular(15),
                                     color: AppColor.secondaryTextColor
-                                        .withOpacity(0.3))
+                                        .withOpacity(0.3),
+                                  )
                                 : null,
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -128,7 +128,7 @@ class _playerListScreenState extends State<playerListScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      song.title,
+                                      song.title.length > 20? "${song.title.substring(0, 20)}...": song.title,
                                       style: TextStyle(
                                         color: AppColor.primaryTextColor,
                                         fontSize: 18,
@@ -136,13 +136,13 @@ class _playerListScreenState extends State<playerListScreen> {
                                       ),
                                     ),
                                     Text(
-                                      song.artist.toString(),
+                                      song.artist ?? 'Unknown Artist',
                                       style: TextStyle(
                                         color: AppColor.secondaryTextColor,
                                         fontSize: 12,
                                         fontWeight: FontWeight.bold,
                                       ),
-                                    )
+                                    ),
                                   ],
                                 ),
                                 selectedIndex == index
@@ -163,14 +163,14 @@ class _playerListScreenState extends State<playerListScreen> {
                                           Icons.play_arrow_rounded,
                                           color: AppColor.secondaryTextColor,
                                         ),
-                                      )
+                                      ),
                               ],
                             ),
                           ),
-                                    );
-              },
-                    );
-            )
+                        );
+                      },
+                    ),
+            ),
           ],
         ),
       ),

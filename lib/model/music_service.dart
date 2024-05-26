@@ -1,98 +1,68 @@
 import 'package:on_audio_query/on_audio_query.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:vicharpt/model/music_model.dart';
+import 'package:just_audio/just_audio.dart';
+import 'package:audio_service/audio_service.dart';
+import 'dart:typed_data';
 
 class MusicService {
   final OnAudioQuery _audioQuery = OnAudioQuery();
+  final AudioPlayer _audioPlayer = AudioPlayer();
 
   Future<void> _requestPermission() async {
-    if (!await Permission.storage.request().isGranted) {
-      await Permission.storage.request();
+    var status = await Permission.storage.status;
+    if (!status.isGranted) {
+      status = await Permission.storage.request();
+      if (!status.isGranted) {
+        throw Exception("Storage permission not granted");
+      }
     }
-    if (!await Permission.mediaLibrary.request().isGranted) {
-      await Permission.mediaLibrary.request();
+
+    status = await Permission.mediaLibrary.status;
+    if (!status.isGranted) {
+      status = await Permission.mediaLibrary.request();
+      if (!status.isGranted) {
+        throw Exception("Media library permission not granted");
+      }
     }
   }
 
   Future<List<SongModel>> getSongs() async {
     await _requestPermission();
-    return await _audioQuery.querySongs();
+    return await _audioQuery.querySongs(
+      orderType: OrderType.ASC_OR_SMALLER,
+      uriType: UriType.EXTERNAL,
+      sortType: null,
+    );
+  }
+
+  Future<void> playSong(String uri) async {
+    try {
+      if (uri.startsWith('content://')) {
+        await _audioPlayer.setUrl(uri);
+      } else {
+        await _audioPlayer.setFilePath(uri);
+      }
+      await _audioPlayer.play();
+    } catch (e) {
+      print("Error playing song: $e");
+    }
+  }
+
+  Future<void> pauseSong() async {
+    await _audioPlayer.pause();
+  }
+
+  Future<void> seek(Duration position) async {
+    await _audioPlayer.seek(position);
+  }
+
+  Stream<Duration> get positionStream => _audioPlayer.positionStream;
+
+  Future<void> seekPrev() async {
+    await _audioPlayer.seekToPrevious();
+  }
+
+  Future<void> seekNext() async {
+    await _audioPlayer.seekToNext();
   }
 }
-
-
-
-
-
-// List<MusicModel> musicList = [
-//   MusicModel(
-//     name: "Lose it",
-//     imageUrl: "assets/images/1.jpg",
-//     artist: "Flume ft. Vic Mensa",
-//     length: 345,
-//     isFav: true,
-//   ),
-//   MusicModel(
-//     name: "Helix",
-//     imageUrl: "assets/images/2.jpg",
-//     artist: "Flume",
-//     length: 430,
-//     isFav: false,
-//   ),
-//   MusicModel(
-//     name: "Say It",
-//     imageUrl: "assets/images/3.jpg",
-//     artist: "Flume ft. Tove Lo",
-//     length: 250,
-//     isFav: false,
-//   ),
-//   MusicModel(
-//     name: "Never Be Like You",
-//     imageUrl: "assets/images/4.jpg",
-//     artist: "Flume • Kai",
-//     length: 500,
-//     isFav: true,
-//   ),
-//   MusicModel(
-//     name: "Numb & Getting Colder",
-//     imageUrl: "assets/images/5.jpg",
-//     artist: "Flume • KUCKA",
-//     length: 330,
-//     isFav: true,
-//   ),
-//   MusicModel(
-//     name: "Wall Out",
-//     imageUrl: "assets/images/6.jpg",
-//     artist: "Flume",
-//     length: 250,
-//     isFav: false,
-//   ),
-//   MusicModel(
-//     name: "Pika",
-//     imageUrl: "assets/images/7.jpg",
-//     artist: "Flume ft. Tove Lo",
-//     length: 450,
-//     isFav: true,
-//   ),
-//   MusicModel(
-//     name: "Space Cadet",
-//     imageUrl: "assets/images/8.jpg",
-//     artist: "Flume ft. Tove",
-//     length: 450,
-//     isFav: true,
-//   ),
-//   MusicModel(
-//     name: "Hyperreal",
-//     imageUrl: "assets/images/9.jpg",
-//     artist: "Tove Lo",
-//     length: 450,
-//     isFav: false,
-//   ),
-//   MusicModel(
-//     name: "Smoke & Retribution",
-//     imageUrl: "assets/images/10.jpg",
-//     artist: "Flume • KUCKA",
-//     length: 450,
-//     isFav: false,
-//   ),
-// ];

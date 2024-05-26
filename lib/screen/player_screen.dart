@@ -1,9 +1,11 @@
+import 'dart:async';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:on_audio_query/on_audio_query.dart';
 import 'package:vicharpt/constants/app_color.dart';
 import 'package:vicharpt/model/music_service.dart';
 import 'package:vicharpt/screen/player_list_screen.dart';
 import 'package:vicharpt/widgets/button_image_or_icon.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 class PLayerScreen extends StatefulWidget {
   const PLayerScreen({super.key});
@@ -13,23 +15,56 @@ class PLayerScreen extends StatefulWidget {
 }
 
 class _PLayerScreenState extends State<PLayerScreen> {
+  final MusicService _musicService = MusicService();
+  late List<SongModel> _songs = [];
+  Duration _currentPosition = Duration.zero;
+
+  bool _isPlaying = false;
   int _currentItemPlaying = 0;
   double _currentPlayBack = 0;
 
-  String formatedPlayerTime(double time) {
-    final min = time ~/ 60;
-    final sec = time % 60;
-    return "$min:${sec.toStringAsFixed(0).padRight(2, "0")}";
-  }
-
   @override
   void initState() {
-    requestPermission();
     super.initState();
+    _loadSongs();
+    _musicService.positionStream.listen((position) {
+      
+      setState(() {
+        _currentPosition = position;
+        _currentPlayBack = position.inMilliseconds.toDouble();
+        if (_currentPlayBack >
+            _songs[_currentItemPlaying].duration!.toDouble()) {
+          _currentPlayBack = _songs[_currentItemPlaying].duration!.toDouble();
+          _currentItemPlaying++;
+        }
+      });
+    });
   }
 
-  Future<void> requestPermission() async {
-    await Permission.storage.request();
+  void _loadSongs() async {
+    final songs = await _musicService.getSongs();
+    setState(() {
+      _songs = songs;
+    });
+  }
+
+  Future<void> _togglePlayPause() async {
+    setState(() {
+      _isPlaying = !_isPlaying;
+      if (_currentPlayBack > 0) {}
+    });
+    if (_isPlaying) {
+      await _musicService.playSong(_songs[_currentItemPlaying].uri!);
+    } else {
+      await _musicService.pauseSong();
+    }
+  }
+
+  String formatedPlayerTime(double milliseconds) {
+    int seconds = milliseconds ~/ 1000;
+    int minutes = seconds ~/ 60;
+    seconds = seconds % 60;
+    return "$minutes:${seconds.toString().padLeft(2, '0')}";
   }
 
   @override
@@ -49,14 +84,12 @@ class _PLayerScreenState extends State<PLayerScreen> {
                   ButtonImageOrIcon(
                     size: 60,
                     child: Icon(
-                      musicList[_currentItemPlaying].isFav
-                          ? Icons.favorite
-                          : Icons.favorite_border,
+                      Icons.music_note_outlined,
                       color: AppColor.secondaryTextColor,
                     ),
                   ),
                   Text(
-                    "PLAYING NOW",
+                    "P L A Y I N G - N O W",
                     style: TextStyle(
                       color: AppColor.secondaryTextColor,
                       fontSize: 14,
@@ -72,7 +105,7 @@ class _PLayerScreenState extends State<PLayerScreen> {
                     onPreseed: () async {
                       int selectedIndex =
                           await Navigator.of(context).push(MaterialPageRoute(
-                        builder: (context) => playerListScreen(
+                        builder: (context) => PlayerListScreen(
                           selectedIndex: _currentItemPlaying,
                         ),
                       ));
@@ -84,28 +117,39 @@ class _PLayerScreenState extends State<PLayerScreen> {
                 ],
               ),
               ButtonImageOrIcon(
-                size: size.width * 0.8,
+                size: size.width * 0.65,
                 distance: 20,
-                padding: 10,
-                imageUrl: musicList[_currentItemPlaying].imageUrl,
+                padding: 8,
+                child: Icon(
+                  Icons.music_note,
+                  color: AppColor.secondaryTextColor,
+                  size: 110,
+                ),
               ),
-              Column(
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    musicList[_currentItemPlaying].name,
-                    style: TextStyle(
-                      color: AppColor.primaryTextColor,
-                      fontSize: 25,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    musicList[_currentItemPlaying].artist,
-                    style: TextStyle(
-                      color: AppColor.secondaryTextColor,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  Column(
+                    children: [
+                      Text(
+                        _songs[_currentItemPlaying].title.length > 15
+                            ? "${_songs[_currentItemPlaying].title.substring(0, 15)}..."
+                            : _songs[_currentItemPlaying].title,
+                        style: TextStyle(
+                          color: AppColor.primaryTextColor,
+                          fontSize: 25,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        _songs[_currentItemPlaying].artist.toString(),
+                        style: TextStyle(
+                          color: AppColor.secondaryTextColor,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -117,7 +161,8 @@ class _PLayerScreenState extends State<PLayerScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          formatedPlayerTime(_currentPlayBack),
+                          formatedPlayerTime(
+                              _currentPosition.inMilliseconds.toDouble()),
                           style: TextStyle(
                             color: AppColor.secondaryTextColor,
                             fontSize: 14,
@@ -126,7 +171,7 @@ class _PLayerScreenState extends State<PLayerScreen> {
                         ),
                         Text(
                           formatedPlayerTime(
-                              musicList[_currentItemPlaying].length),
+                              _songs[_currentItemPlaying].duration!.toDouble()),
                           style: TextStyle(
                             color: AppColor.secondaryTextColor,
                             fontSize: 14,
@@ -138,7 +183,8 @@ class _PLayerScreenState extends State<PLayerScreen> {
                   ),
                   Slider(
                     value: _currentPlayBack,
-                    max: musicList[_currentItemPlaying].length,
+                    min: 0.0,
+                    max: _songs[_currentItemPlaying].duration!.toDouble(),
                     thumbColor: AppColor.blue,
                     activeColor: AppColor.blue,
                     inactiveColor: AppColor.bgDark,
@@ -146,6 +192,7 @@ class _PLayerScreenState extends State<PLayerScreen> {
                       setState(() {
                         _currentPlayBack = value;
                       });
+                      _musicService.seek(Duration(milliseconds: value.toInt()));
                     },
                   )
                 ],
@@ -154,11 +201,21 @@ class _PLayerScreenState extends State<PLayerScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   ButtonImageOrIcon(
-                    onPreseed: () {
-                      if (_currentItemPlaying > 0)
+                    onPreseed: () async {
+                      if (_currentItemPlaying > 0) {
+                        await _musicService.pauseSong();
                         setState(() {
                           _currentItemPlaying--;
+                          if (_isPlaying) {
+                            Timer(Duration(milliseconds: 1000), () {
+                              _musicService
+                                  .playSong(_songs[_currentItemPlaying].uri!);
+                            });
+                          } else {
+                            _musicService.pauseSong();
+                          }
                         });
+                      }
                     },
                     size: 80,
                     child: Icon(
@@ -168,20 +225,35 @@ class _PLayerScreenState extends State<PLayerScreen> {
                     ),
                   ),
                   ButtonImageOrIcon(
+                    onPreseed: () async {
+                      _togglePlayPause();
+                    },
                     size: 80,
                     colors: [AppColor.blueTopDark, AppColor.blue],
                     child: Icon(
-                      Icons.pause_rounded,
+                      _isPlaying
+                          ? Icons.pause_rounded
+                          : Icons.play_arrow_rounded,
                       color: AppColor.white,
                       size: 35,
                     ),
                   ),
                   ButtonImageOrIcon(
-                    onPreseed: () {
-                      if (_currentItemPlaying < musicList.length - 1)
+                    onPreseed: () async {
+                      if (_currentItemPlaying < _songs.length - 1) {
+                        await _musicService.pauseSong();
                         setState(() {
                           _currentItemPlaying++;
+                          if (_isPlaying) {
+                            Timer(Duration(milliseconds: 1000), () {
+                              _musicService
+                                  .playSong(_songs[_currentItemPlaying].uri!);
+                            });
+                          } else {
+                            _musicService.pauseSong();
+                          }
                         });
+                      }
                     },
                     size: 80,
                     child: Icon(
@@ -191,7 +263,7 @@ class _PLayerScreenState extends State<PLayerScreen> {
                     ),
                   ),
                 ],
-              )
+              ),
             ],
           ),
         ),
